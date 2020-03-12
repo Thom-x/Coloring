@@ -32,3 +32,9 @@ jobs:
 
     - name: Build
       run: go build -ldflags "-s -w" -o ./bin/decoration
+
+    - name: Compress binaries
+      uses: svenstaro/upx-action@v1-release
+      with:
+        file: bin/decoration
+        args: --better
