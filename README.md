@@ -1,4 +1,11 @@
+# Coloring
+
 Add prefix suffix and color from file or pipe to console
+
+![release](https://github.com/Thom-x/Coloring/workflows/release/badge.svg)
+![Go](https://github.com/Thom-x/Coloring/workflows/Go/badge.svg)
+
+---
 
 ### Build
 ```bash
