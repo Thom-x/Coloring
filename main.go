@@ -3,41 +3,34 @@ package main
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"log"
 	"os"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "decoration",
-	Short: "Transform the input with prefix and suffix",
-	Long: `Transform the input with prefix and suffix.
-Transform the input (pipe of file) with prefix and suffix`,
+	Short: "Execute a program and add prefix suffix and color to its log output",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		print = logNoop
-		if flags.verbose {
-			print = logOut
-		}
 		return runCommand()
 	},
 }
 
 var flags struct{
-	filepath string
+	program string
 	prefix string
 	suffix string
 	color string
-	verbose bool
+	args string
 }
 
 var flagsName = struct{
-	file, fileShort string
-	verbose, verboseShort string
+	program, programShort string
+	args, argsShort string
 	prefix, prefixShort string
 	suffix, suffixShort string
 	color, colorShort string
 } {
-	"file", "f",
-	"verbose", "v",
+	"program", "e",
+	"args", "a",
 	"prefix", "p",
 	"suffix", "s",
 	"color", "c",
@@ -47,10 +40,15 @@ var print func(s string)
 
 func main() {
 	rootCmd.Flags().StringVarP(
-		&flags.filepath,
-		flagsName.file,
-		flagsName.fileShort,
-		"", "path to the file")
+		&flags.program,
+		flagsName.program,
+		flagsName.programShort,
+		"", "program to execute")
+	rootCmd.Flags().StringVarP(
+		&flags.args,
+		flagsName.args,
+		flagsName.argsShort,
+		"", "arguments of the program")
 	rootCmd.Flags().StringVarP(
 		&flags.prefix,
 		flagsName.prefix,
@@ -66,20 +64,11 @@ func main() {
 		flagsName.color,
 		flagsName.colorShort,
 		"", "color : black, red, green, yellow, blue, magenta, cyan, white")
-	rootCmd.PersistentFlags().BoolVarP(
-		&flags.verbose,
-		flagsName.verbose,
-		flagsName.verboseShort,
-		false, "log verbose output")
+
+	rootCmd.MarkFlagRequired("program")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-func logNoop(s string) {}
-
-func logOut(s string) {
-	log.Println(s)
 }

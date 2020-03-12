@@ -1,50 +1,72 @@
 package main
 
 import (
-	"bufio"
+	"os/exec"
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/pkg/errors"
 	"io"
 	"os"
+	"bufio"
+	"os/signal"
+	"syscall"
+	"github.com/mgutz/str"
 )
 
 func runCommand() error {
-	if isInputFromPipe() {
-		print("data is from pipe")
-		return decorate(os.Stdin, os.Stdout)
-	} else {
-		file, e := getFile()
-		if e != nil {
-			return e
-		}
-		defer file.Close()
-		return decorate(file, os.Stdout)
-	}
+	return decorate(os.Stdin, os.Stdout)
 }
 
-func isInputFromPipe() bool {
-	fi, _ := os.Stdin.Stat()
-	return fi.Mode() & os.ModeCharDevice == 0
-}
-
-func getFile() (*os.File, error){
-	if flags.filepath == "" {
-		return nil, errors.New("please input a file")
-	}
-	if !fileExists(flags.filepath) {
-		return nil, errors.New("the file provided does not exist")
-	}
-	file, e := os.Open(flags.filepath)
-	if e != nil {
-		return nil, errors.Wrapf(e,
-			"unable to read the file %s", flags.filepath)
-	}
-	return file, nil
-}
 
 func decorate(r io.Reader, w io.Writer) error {
-	scanner := bufio.NewScanner(bufio.NewReader(r))
+	args := str.ToArgv(flags.args)
+	cmd := exec.Command(flags.program, args...)
+	
+	stdout, e := cmd.StdoutPipe()
+	if e != nil {
+		return e
+	}
+
+	stderr, e := cmd.StderrPipe()
+	if e != nil {
+        	return e
+    }
+	
+
+	e = cmd.Start()
+	if e != nil {
+		return e
+	}
+
+	go func() {
+		// wait for the command to finish
+		waitCh := make(chan error, 1)
+		go func() {
+		    waitCh <- cmd.Wait()
+		    close(waitCh)
+		}()
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan)
+
+		// Loop to handle multiple signals
+		for {
+		    select {
+		    case sig := <-sigChan:
+			cmd.Process.Signal(sig)
+		    case err := <-waitCh:
+			// Subprocess exited. Get the return code, if we can
+			var waitStatus syscall.WaitStatus
+			if exitError, ok := err.(*exec.ExitError); ok {
+			    waitStatus = exitError.Sys().(syscall.WaitStatus)
+			    os.Exit(waitStatus.ExitStatus())
+			}
+		    }
+		}
+	}()
+	
+
+	merged := io.MultiReader(stdout, stderr)
+	scanner := bufio.NewScanner(merged)
+
 	for scanner.Scan() {
 		if(flags.color != "") {
 			switch(flags.color) {
@@ -72,15 +94,7 @@ func decorate(r io.Reader, w io.Writer) error {
 		}
 		if e != nil {
 			return e
-		}
+		}		
 	}
 	return nil
-}
-
-func fileExists(filepath string) bool {
-	info, e := os.Stat(filepath)
-	if os.IsNotExist(e) {
-		return false
-	}
-	return !info.IsDir()
 }
