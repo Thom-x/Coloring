@@ -30,7 +30,13 @@ jobs:
         fi
     - name: Build
       run: go build -ldflags "-s -w" -o ./bin/decoration
-      
+
+    - name: Compress binaries
+      uses: svenstaro/upx-action@v1-release
+      with:
+        file: bin/decoration
+        args: -9
+
     - name: Upload to release
       uses: JasonEtco/upload-to-release@master
       with:

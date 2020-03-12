@@ -7,8 +7,6 @@ import (
 	"io"
 	"os"
 	"bufio"
-	"os/signal"
-	"syscall"
 	"github.com/mgutz/str"
 )
 
@@ -28,41 +26,13 @@ func decorate(r io.Reader, w io.Writer) error {
 
 	stderr, e := cmd.StderrPipe()
 	if e != nil {
-        	return e
-    }
-	
+       	return e
+    }	
 
 	e = cmd.Start()
 	if e != nil {
 		return e
-	}
-
-	go func() {
-		// wait for the command to finish
-		waitCh := make(chan error, 1)
-		go func() {
-		    waitCh <- cmd.Wait()
-		    close(waitCh)
-		}()
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan)
-
-		// Loop to handle multiple signals
-		for {
-		    select {
-		    case sig := <-sigChan:
-			cmd.Process.Signal(sig)
-		    case err := <-waitCh:
-			// Subprocess exited. Get the return code, if we can
-			var waitStatus syscall.WaitStatus
-			if exitError, ok := err.(*exec.ExitError); ok {
-			    waitStatus = exitError.Sys().(syscall.WaitStatus)
-			    os.Exit(waitStatus.ExitStatus())
-			}
-		    }
-		}
-	}()
-	
+	}	
 
 	merged := io.MultiReader(stdout, stderr)
 	scanner := bufio.NewScanner(merged)
