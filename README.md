@@ -1,4 +1,4 @@
-# Coloring
+# Decoration
 
 Add prefix suffix and color from file or pipe to console
 
